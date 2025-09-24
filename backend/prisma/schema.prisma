@@ -1,0 +1,137 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+
+generator client {
+  provider = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
+
+}
+
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model with comprehensive fields and constraints
+model User {
+  id            String              @id @default(cuid())
+  username      String              @unique
+  password      String
+  name          String?
+  photoUrl      String?
+  bio           String?
+  isActive      Boolean             @default(true)
+  lastSeen      DateTime?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  // Relationships
+  unReadMessage MessageReadStatus[] @relation("ChatUnreadMessages")
+  sentMessages  Message[]
+  chats         Chat[]              @relation("ChatParticipants")
+  ownedChats    Chat[]              @relation("ChatOwner")
+
+  // chatMemberships ChatMembership[]
+  @@map("users")
+}
+
+// Enhanced Chat model with better organization
+model Chat {
+  id           String   @id @default(cuid())
+  title        String?
+  description  String?
+  type         ChatType @default(DIRECT)
+  isGroup      Boolean  @default(false)
+  photoUrl     String?
+  lastActivity DateTime @default(now())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Owner for group chats
+  ownerId String?
+  owner   User?   @relation("ChatOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+
+  // Relationships
+  messages     Message[]
+  participants User[]    @relation("ChatParticipants")
+
+  // Indexes for performance
+  @@index([lastActivity(sort: Desc)])
+  @@index([createdAt])
+  @@index([type])
+  @@map("chats")
+}
+
+// Enhanced Message model with rich features
+model Message {
+  id          String      @id @default(cuid())
+  content     String
+  type        MessageType @default(TEXT)
+  edited      Boolean     @default(false)
+  editedAt    DateTime?
+  replyToId   String?
+  attachments Json? // Store file URLs, metadata
+  metadata    Json? // Store additional data like reactions, mentions
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  // Relationships
+  sender     User                @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  senderId   String
+  chat       Chat                @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  chatId     String
+  replyTo    Message?            @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies    Message[]           @relation("MessageReplies")
+  readStatus MessageReadStatus[]
+
+  // Indexes for performance
+  @@index([chatId, createdAt(sort: Desc)])
+  @@index([senderId])
+  @@index([type])
+  @@map("messages")
+}
+
+// Message read status tracking
+model MessageReadStatus {
+  id     String   @id @default(cuid())
+  readAt DateTime @default(now())
+
+  // Relationships
+  message   Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  messageId String
+  user      User    @relation("ChatUnreadMessages", fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+
+  // Composite unique constraint
+  @@unique([messageId, userId])
+  @@index([userId])
+  @@map("message_read_status")
+}
+
+// Enums for type safety and clarity
+enum ChatType {
+  DIRECT // 1-on-1 chat
+  GROUP // Group chat
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  VIDEO
+  AUDIO
+  FILE
+  SYSTEM // System messages (user joined, left, etc.)
+  LOCATION
+  CONTACT
+}
+
+enum ChatRole {
+  OWNER
+  ADMIN
+  MEMBER
+  // READONLY
+}

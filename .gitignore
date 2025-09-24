@@ -1,0 +1,34 @@
+# ----------------------
+# Global ignores
+# ----------------------
+node_modules/
+logs/
+*.log
+.env
+.DS_Store
+
+# ----------------------
+# Backend
+# ----------------------
+backend/node_modules/
+backend/generated/prisma
+backend/.env
+backend/logs/
+# optional if you have build outputs
+# backend/dist/
+
+# ----------------------
+# CLI / Next.js
+# ----------------------
+cli/node_modules/
+cli/.pnp
+cli/.pnp.js
+cli/.yarn/install-state.gz
+cli/coverage/
+cli/.next/
+cli/out/
+cli/build/
+cli/.vercel/
+cli/*.tsbuildinfo
+cli/next-env.d.ts
+cli/.env*.local
